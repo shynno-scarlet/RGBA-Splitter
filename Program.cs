@@ -65,20 +65,16 @@ internal static class Program
 			Task.Run(async () =>
 			{
 				var fi = new FileInfo(file);
-
-				// create output dir
 				var noExt = fi.Name.Replace(fi.Extension, string.Empty);
-				var dir = @$"{fi.Directory!.FullName}\{noExt}";
-				if (!Directory.Exists(dir))
-					Directory.CreateDirectory(dir);
+				var newFile = @$"{fi.Directory!.FullName}\{noExt}";
 
 				// extract all channels from bitmap and save to files
 				var bmp = new Bitmap(Image.FromFile(file, true));
 				var tasks = new List<Task>();
 				foreach (RGBA rgba in Enum.GetValues<RGBA>())
 				{
-					var copy = bmp.Clone(new Rectangle(0, 0, bmp.Width, bmp.Height), bmp.PixelFormat);
-					tasks.Add(Task.Run(() => copy.ExtractChannel(rgba).Save($@"{dir}\{noExt}_{rgba}.png", ImageFormat.Png)));
+					var copy = bmp.Clone(new(0, 0, bmp.Width, bmp.Height), bmp.PixelFormat);
+					tasks.Add(Task.Run(() => copy.ExtractChannel(rgba).Save($@"{newFile}_{rgba}.png", ImageFormat.Png)));
 				}
 				foreach (var task in tasks)
 					await task;
