@@ -52,23 +52,37 @@ internal static class Program
 		// exit if no files are selected
 		if (open.ShowDialog() != DialogResult.OK || open.FileNames.Length == 0) return;
 
-		// iterate over every file
+		// iterate over every file in parallel
+		var run = 0;
 		foreach (var file in open.FileNames)
 		{
-			var fi = new FileInfo(file);
-
-			// create output dir
-			var noExt = fi.Name.Replace(fi.Extension, string.Empty);
-			var dir = @$"{fi.Directory!.FullName}\{noExt}";
-			if (!Directory.Exists(dir))
-				Directory.CreateDirectory(dir);
-
-			// extract all channels from bitmap and save to files
-			var bmp = new Bitmap(Image.FromFile(file, true));
-			foreach (RGBA rgba in Enum.GetValues<RGBA>())
+			run++;
+			Task.Run(async () =>
 			{
-				bmp.ExtractChannel(rgba).Save($@"{dir}\{noExt}_{rgba}.png", ImageFormat.Png);
-			}
+				var fi = new FileInfo(file);
+
+				// create output dir
+				var noExt = fi.Name.Replace(fi.Extension, string.Empty);
+				var dir = @$"{fi.Directory!.FullName}\{noExt}";
+				if (!Directory.Exists(dir))
+					Directory.CreateDirectory(dir);
+
+				// extract all channels from bitmap and save to files
+				var bmp = new Bitmap(Image.FromFile(file, true));
+				var tasks = new List<Task>();
+				foreach (RGBA rgba in Enum.GetValues<RGBA>())
+				{
+					var copy = bmp.Clone(new Rectangle(0, 0, bmp.Width, bmp.Height), bmp.PixelFormat);
+					tasks.Add(Task.Run(() => copy.ExtractChannel(rgba).Save($@"{dir}\{noExt}_{rgba}.png", ImageFormat.Png)));
+				}
+				foreach (var task in tasks)
+					await task;
+				run--;
+			});
+		}
+		while(run > 0)
+		{
+			Thread.Sleep(100);
 		}
 	}
 
@@ -80,17 +94,16 @@ internal static class Program
 	/// <returns></returns>
 	static Bitmap ExtractChannel(this Bitmap bmp, RGBA rgba)
 	{
-		var copy = bmp.Clone(new Rectangle(0, 0, bmp.Width, bmp.Height), bmp.PixelFormat);
-		for (var x = 0; x < copy.Width; x++)
+		for (var x = 0; x < bmp.Width; x++)
 		{
-			for (var y = 0; y < copy.Height; y++)
+			for (var y = 0; y < bmp.Height; y++)
 			{
-				var px = copy.GetPixel(x, y);
+				var px = bmp.GetPixel(x, y);
 				px = px.ExtractChannel(rgba);
-				copy.SetPixel(x, y, px);
+				bmp.SetPixel(x, y, px);
 			}
 		}
-		return copy;
+		return bmp;
 	}
 
 	/// <summary>
