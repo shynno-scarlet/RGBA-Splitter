@@ -38,23 +38,28 @@ internal static class Program
 	/// program entry point
 	/// </summary>
 	[STAThread]
-	static void Main()
+	static void Main(string[] args)
 	{
-		// select files to convert
-		var formats = string.Join(";", fileFormats.Select(s => $"*.{s}"));
-		var open = new OpenFileDialog
+		if (args == null || args.Length == 0)
 		{
-			Title = "Select Image Files",
-			Filter = $"Image-Files ({formats})|{formats}",
-			Multiselect = true,
-		};
+			// select files to convert
+			var formats = string.Join(";", fileFormats.Select(s => $"*.{s}"));
+			var open = new OpenFileDialog
+			{
+				Title = "Select Image Files",
+				Filter = $"Image-Files ({formats})|{formats}",
+				Multiselect = true,
+			};
 
-		// exit if no files are selected
-		if (open.ShowDialog() != DialogResult.OK || open.FileNames.Length == 0) return;
+			// exit if no files are selected
+			if (open.ShowDialog() != DialogResult.OK || open.FileNames.Length == 0) return;
+
+			args = open.FileNames;
+		}
 
 		// iterate over every file in parallel
 		var run = 0;
-		foreach (var file in open.FileNames)
+		foreach (var file in args)
 		{
 			run++;
 			Task.Run(async () =>
